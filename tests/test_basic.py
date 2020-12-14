@@ -25,6 +25,6 @@ def test_lookup_superset_in_subset():
     assert Dependencies.NGINX not in PythonDependencies
 
 
-@pytest.mark.skip(reason='No idea how to implement this yet')
+# @pytest.mark.skip(reason='No idea how to implement this yet')
 def test_is():
     assert PythonDependencies.DJANGO is Dependencies.DJANGO
