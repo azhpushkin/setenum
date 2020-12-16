@@ -1,9 +1,23 @@
 from enum import Enum, EnumMeta
 
 
+# classmethod trick is used to remove a need in SetEnum class (only metaclass is needed)
+@classmethod
+def _missing_(cls, value):
+    # _missing_ is used for looking up the values during __call__
+    # this is a small check that makes this lookup work across super/sub sets
+    if isinstance(value, cls):
+        return value
+
+    return super()._missing_(value)
+
 
 class SetEnumMeta(EnumMeta):
 
+    def __new__(metacls, cls, bases, classdict):
+        classdict['_missing_'] = _missing_
+        return super().__new__(metacls, cls, bases, classdict)
+    
     def __init__(self, name, bases, dict):
         self._subsets_ = []
         self._supersets_ = []
@@ -12,9 +26,8 @@ class SetEnumMeta(EnumMeta):
         return "<SetEnum %r>" % cls.__name__
 
     def __instancecheck__(self, instance):
-        for cls in getattr(instance, '_owner_sets_', []):
-            if cls == self:
-                return True
+        if instance == self:
+            return True
         
         for cls in self._subsets_:
             if isinstance(instance, cls):
@@ -24,28 +37,7 @@ class SetEnumMeta(EnumMeta):
 
 
 class SetEnum(Enum, metaclass=SetEnumMeta):
-    # TODO: https://docs.python.org/3/reference/datamodel.html#customizing-instance-and-subclass-checks
-    
-    def __init__(self, *args, **kwargs):
-        # Could be single value, but in case on intersections
-        # value can be owner by multiple SetEnums
-        self._owner_sets_ = [self.__class__, ]
-
-    @classmethod
-    def _missing_(cls, value):
-        # _missing_ is used for looking up the values during __call__
-        # this is a small check that makes this lookup work across super/sub sets
-        if isinstance(value, cls):
-            return value
-
-        return super()._missing_(value)
-
-    def __str__(self):
-        if len(self._owner_sets_) == 1:
-            owners = self.__class__.__name__
-        else:
-            owners = '(' + '|'.join(cls.__name__ for cls in self._owner_sets_) + ')'
-        return "%s.%s" % (owners, self._name_)
+    pass
 
     
 def _copy_members_from_subset_to_superset(subset_cls, superset_cls):
