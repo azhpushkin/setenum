@@ -1,7 +1,7 @@
 import pytest
 from setenum import SetEnum, includes
 
-# test enums
+# Example SetEnums
 
 class PythonDependencies(SetEnum):
     DJANGO = 'django'
@@ -25,6 +25,11 @@ def test_lookup_superset_in_subset():
     assert Dependencies.NGINX not in PythonDependencies
 
 
-# @pytest.mark.skip(reason='No idea how to implement this yet')
 def test_is():
     assert PythonDependencies.DJANGO is Dependencies.DJANGO
+
+
+@pytest.mark.xfail(reason='Not implemented yet')
+def test_insinstance():
+    assert isinstance(PythonDependencies.DJANGO, Dependencies)
+    assert issubclass(PythonDependencies, Dependencies)
