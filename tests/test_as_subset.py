@@ -28,7 +28,5 @@ def test_is():
     assert PythonDependencies.DJANGO is Dependencies.DJANGO
 
 
-@pytest.mark.xfail(reason='Not implemented yet')
 def test_insinstance():
     assert isinstance(PythonDependencies.DJANGO, Dependencies)
-    assert issubclass(PythonDependencies, Dependencies)

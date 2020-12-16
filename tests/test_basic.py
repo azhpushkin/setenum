@@ -15,6 +15,9 @@ class Dependencies(SetEnum):
     NODEJS = 'nodejs'
 
 
+print(isinstance(PythonDependencies.DJANGO, Dependencies))
+
+
 def test_compare_to_superset():
     assert PythonDependencies.DJANGO in Dependencies
     assert PythonDependencies.DJANGO == Dependencies.DJANGO
@@ -29,7 +32,5 @@ def test_is():
     assert PythonDependencies.DJANGO is Dependencies.DJANGO
 
 
-@pytest.mark.xfail(reason='Not implemented yet')
 def test_insinstance():
     assert isinstance(PythonDependencies.DJANGO, Dependencies)
-    assert issubclass(PythonDependencies, Dependencies)

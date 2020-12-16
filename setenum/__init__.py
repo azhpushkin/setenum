@@ -1,34 +1,48 @@
 from enum import Enum, EnumMeta
 
 
+
 class SetEnumMeta(EnumMeta):
-    def __contains__(cls, member):
-        if not isinstance(member, Enum):
-            raise TypeError(
-                "unsupported operand type(s) for 'in': '%s' and '%s'" % (
-                    type(member).__qualname__, cls.__class__.__qualname__))
-        # TODO: class check is required
-        return member._name_ in cls._member_map_
+
+    def __init__(self, name, bases, dict):
+        self._subsets_ = []
+        self._supersets_ = []
+
+    def __repr__(cls):
+        return "<SetEnum %r>" % cls.__name__
+
+    def __instancecheck__(self, instance):
+        for cls in getattr(instance, '_owner_sets_', []):
+            if cls == self:
+                return True
+        
+        for cls in self._subsets_:
+            if isinstance(instance, cls):
+                return True
+        
+        return False
 
 
 class SetEnum(Enum, metaclass=SetEnumMeta):
-    
     # TODO: https://docs.python.org/3/reference/datamodel.html#customizing-instance-and-subclass-checks
-    # This is a somewhat ugly trick to make repr and print show on which 
     
-    def __get__(self, obj, objtype=None):
-        self.__called_from = objtype
-        return self
-
-    def __repr__(self):
-        return "<%s.%s: %r>" % (
-                self.__called_from.__name__, self._name_, self._value_)
+    def __init__(self, *args, **kwargs):
+        # Could be single value, but in case on intersections
+        # value can be owner by multiple SetEnums
+        self._owner_sets_ = [self.__class__, ]
 
     def __str__(self):
-        return "%s.%s" % (self.__called_from.__name__, self._name_)
+        if len(self._owner_sets_) == 1:
+            owners = self.__class__.__name__
+        else:
+            owners = '(' + '|'.join(cls.__name__ for cls in self._owner_sets_) + ')'
+        return "%s.%s" % (owners, self._name_)
 
     
 def _copy_members_from_subset_to_superset(subset_cls, superset_cls):
+    subset_cls._supersets_.append(superset_cls)
+    superset_cls._subsets_.append(subset_cls)
+
     for name, obj in subset_cls._member_map_.items():
         setattr(superset_cls, name, obj)
         superset_cls._member_map_[name] = obj
