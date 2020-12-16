@@ -44,6 +44,7 @@ def test_values(setenum_factory):
     assert set(obj.value for obj in PythonDependencies) == set(['django', 'flask'])
     assert set(obj.value for obj in Dependencies) == set(['django', 'flask', 'nginx', 'nodejs'])
 
+
 def test_compare_to_superset(setenum_factory):
     PythonDependencies, Dependencies = setenum_factory()
 
@@ -68,3 +69,17 @@ def test_insinstance(setenum_factory):
     PythonDependencies, Dependencies = setenum_factory()
 
     assert isinstance(PythonDependencies.DJANGO, Dependencies)
+
+
+def test_call(setenum_factory):
+    PythonDependencies, Dependencies = setenum_factory()
+
+    assert PythonDependencies('django') is PythonDependencies.DJANGO
+    assert Dependencies('django') is PythonDependencies.DJANGO
+    
+    assert Dependencies(PythonDependencies.DJANGO) is PythonDependencies.DJANGO
+    assert Dependencies(Dependencies.DJANGO) is PythonDependencies.DJANGO
+
+    assert PythonDependencies(PythonDependencies.DJANGO) is PythonDependencies.DJANGO
+    assert PythonDependencies(Dependencies.DJANGO) is PythonDependencies.DJANGO
+    
