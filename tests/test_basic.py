@@ -34,7 +34,15 @@ def create_via_subset():
 @pytest.fixture(params=['as_subset', 'as_superset'])
 def setenum_factory(request):
     return create_via_subset if request.param == 'as_subset' else create_via_superset
-        
+
+
+def test_values(setenum_factory):
+    PythonDependencies, Dependencies = setenum_factory()
+
+    assert len(PythonDependencies) == 2
+    assert len(Dependencies) == 4
+    assert set(obj.value for obj in PythonDependencies) == set(['django', 'flask'])
+    assert set(obj.value for obj in Dependencies) == set(['django', 'flask', 'nginx', 'nodejs'])
 
 def test_compare_to_superset(setenum_factory):
     PythonDependencies, Dependencies = setenum_factory()
