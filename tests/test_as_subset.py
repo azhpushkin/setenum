@@ -1,18 +1,17 @@
 import pytest
-from setenum import SetEnum, as_superset_of
+from setenum import SetEnum, as_subset_of
 
-# Example SetEnums
 
+class Dependencies(SetEnum):
+    NGINX = 'nginx'
+    NODEJS = 'nodejs'
+
+
+@as_subset_of(Dependencies)
 class PythonDependencies(SetEnum):
     DJANGO = 'django'
     FLASK = 'flask'
     FASTAPI = 'fastapi'
-
-
-@as_superset_of(PythonDependencies)
-class Dependencies(SetEnum):
-    NGINX = 'nginx'
-    NODEJS = 'nodejs'
 
 
 def test_compare_to_superset():

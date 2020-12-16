@@ -28,14 +28,22 @@ class SetEnum(Enum, metaclass=SetEnumMeta):
         return "%s.%s" % (self.__called_from.__name__, self._name_)
 
     
+def _copy_members_from_subset_to_superset(subset_cls, superset_cls):
+    for name, obj in subset_cls._member_map_.items():
+        setattr(superset_cls, name, obj)
+        superset_cls._member_map_[name] = obj
+        superset_cls._member_names_.append(name)
 
 
+def as_superset_of(subset_cls):
+    def inner(superset_cls):
+        _copy_members_from_subset_to_superset(subset_cls, superset_cls)
+        return superset_cls
+    return inner
 
-def includes(cls_to_include):
-    def inner(cls):
-        for name, obj in cls_to_include._member_map_.items():
-            setattr(cls, name, obj)
-            cls._member_map_[name] = obj
-            cls._member_names_.append(name)
-        return cls
+
+def as_subset_of(superset_cls):
+    def inner(subset_cls):
+        _copy_members_from_subset_to_superset(subset_cls, superset_cls)
+        return subset_cls
     return inner
