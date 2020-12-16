@@ -29,3 +29,13 @@ assert Dependencies.FLASK in PythonDependencies
 # in fact, objects that repeat are the same ones in different sets
 assert PythonDependencies.DJANGO is Dependencies.DJANGO
 ```
+
+
+Currently under investigation:
+[ ] implicit intersections (define type in X, then in Y)
+  (alternative - force defining intersection as explicit SetEnum)
+[ ] `__subsets__` and `__supersets__` looks like a better choice than decorators
+[ ] ensure Django tests are working fine
+[ ] is there a way to get rid of SetEnum and leave only metaclass?
+  (right now SetEnum is needed for `_missing_` only)
+  Probably appending `dict` argument of `__new__` may work
