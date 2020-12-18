@@ -1,39 +1,39 @@
 import pytest
-from setenum import SetEnum, as_superset_of, as_subset_of
+from setenum import SetEnum
 
 # Example SetEnums
 
 # Different ways to create the same Enum structure
 
-def create_via_superset():
-    class PythonDependencies(SetEnum):
-        DJANGO = 'django'
-        FLASK = 'flask'
-
-    @as_superset_of(PythonDependencies)
-    class Dependencies(SetEnum):
-        NGINX = 'nginx'
-        NODEJS = 'nodejs'
-    
-    return PythonDependencies, Dependencies
-
-
 def create_via_subset():
+    class PythonDependencies(SetEnum):
+        DJANGO = 'django'
+        FLASK = 'flask'
+
+    class Dependencies(SetEnum):
+        __subsets__ = [PythonDependencies, ]
+        NGINX = 'nginx'
+        NODEJS = 'nodejs'
+    
+    return PythonDependencies, Dependencies
+
+
+def create_via_superset():
     class Dependencies(SetEnum):
         NGINX = 'nginx'
         NODEJS = 'nodejs'
 
-    @as_subset_of(Dependencies)
     class PythonDependencies(SetEnum):
+        __supersets__ = [Dependencies, ]
         DJANGO = 'django'
         FLASK = 'flask'
 
     return PythonDependencies, Dependencies
 
     
-@pytest.fixture(params=['as_subset', 'as_superset'])
+@pytest.fixture(params=['__subsets__', '__supersets__'])
 def setenum_factory(request):
-    return create_via_subset if request.param == 'as_subset' else create_via_superset
+    return create_via_subset if request.param == '__subsets__' else create_via_superset
 
 
 def test_values(setenum_factory):

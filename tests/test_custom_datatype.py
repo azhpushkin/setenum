@@ -1,5 +1,5 @@
 import pytest
-from setenum import SetEnum, as_superset_of
+from setenum import SetEnum
 from datetime import date, datetime
 
 # test enums
@@ -21,8 +21,8 @@ def test_bool_operators_with_custom_datatype(datatype, values):
         BASE_A = a
         BASE_B = b
 
-    @as_superset_of(Subset)
     class Superset(SetEnum):
+        __subsets__ = [Subset, ]
         SUPER_C = c
         SUPER_D = d
 

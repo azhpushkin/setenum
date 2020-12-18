@@ -12,15 +12,33 @@ def _missing_(cls, value):
     return super()._missing_(value)
 
 
+def _copy_members_from_subset_to_superset(subset_cls, superset_cls):
+
+    for name, obj in subset_cls._member_map_.items():
+        setattr(superset_cls, name, obj)
+        superset_cls._member_map_[name] = obj
+        superset_cls._member_names_.append(name)
+        superset_cls._value2member_map_[obj.value] = obj
+
+
 class SetEnumMeta(EnumMeta):
 
     def __new__(metacls, cls, bases, classdict):
+        classdict.setdefault('__subsets__', [])
+        classdict.setdefault('__supersets__', [])
+
         classdict['_missing_'] = _missing_
-        return super().__new__(metacls, cls, bases, classdict)
-    
-    def __init__(self, name, bases, dict):
-        self._subsets_ = []
-        self._supersets_ = []
+        new_cls = super().__new__(metacls, cls, bases, classdict)
+
+        for subset in classdict.get('__subsets__'):
+            subset.__supersets__.append(new_cls)
+            _copy_members_from_subset_to_superset(subset, new_cls)
+        
+        for superset in classdict.get('__supersets__'):
+            superset.__subsets__.append(new_cls)
+            _copy_members_from_subset_to_superset(new_cls, superset)
+        
+        return new_cls
 
     def __repr__(cls):
         return "<SetEnum %r>" % cls.__name__
@@ -29,7 +47,7 @@ class SetEnumMeta(EnumMeta):
         if instance == self:
             return True
         
-        for cls in self._subsets_:
+        for cls in self.__subsets__:
             if isinstance(instance, cls):
                 return True
         
@@ -40,26 +58,18 @@ class SetEnum(Enum, metaclass=SetEnumMeta):
     pass
 
     
-def _copy_members_from_subset_to_superset(subset_cls, superset_cls):
-    subset_cls._supersets_.append(superset_cls)
-    superset_cls._subsets_.append(subset_cls)
-
-    for name, obj in subset_cls._member_map_.items():
-        setattr(superset_cls, name, obj)
-        superset_cls._member_map_[name] = obj
-        superset_cls._member_names_.append(name)
-        superset_cls._value2member_map_[obj.value] = obj
 
 
-def as_superset_of(subset_cls):
-    def inner(superset_cls):
-        _copy_members_from_subset_to_superset(subset_cls, superset_cls)
-        return superset_cls
-    return inner
+
+# def as_superset_of(subset_cls):
+#     def inner(superset_cls):
+#         _copy_members_from_subset_to_superset(subset_cls, superset_cls)
+#         return superset_cls
+#     return inner
 
 
-def as_subset_of(superset_cls):
-    def inner(subset_cls):
-        _copy_members_from_subset_to_superset(subset_cls, superset_cls)
-        return subset_cls
-    return inner
+# def as_subset_of(superset_cls):
+#     def inner(subset_cls):
+#         _copy_members_from_subset_to_superset(subset_cls, superset_cls)
+#         return subset_cls
+#     return inner
