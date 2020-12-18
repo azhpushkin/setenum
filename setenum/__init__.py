@@ -12,6 +12,26 @@ def _missing_(cls, value):
     return super()._missing_(value)
 
 
+def _find_cycle(root_cls, visited=None) -> bool:
+    if not visited:
+        visited = set()
+    
+    if root_cls in visited:
+        return True
+
+    visited.add(root_cls)
+    is_cycle_detected = any(_find_cycle(subset, visited) for subset in root_cls.__subsets__)
+    visited.remove(root_cls)
+    return is_cycle_detected
+
+
+def _is_enums_hierarchy_valid(cls) -> bool:
+    if _find_cycle(cls):
+        return False
+
+    return all(_is_enums_hierarchy_valid(superset) for superset in cls.__supersets__)
+
+
 def _copy_members_from_subset_to_superset(subset_cls, superset_cls):
 
     for name, obj in subset_cls._member_map_.items():
@@ -32,10 +52,23 @@ class SetEnumMeta(EnumMeta):
 
         for subset in classdict.get('__subsets__'):
             subset.__supersets__.append(new_cls)
-            _copy_members_from_subset_to_superset(subset, new_cls)
         
         for superset in classdict.get('__supersets__'):
             superset.__subsets__.append(new_cls)
+
+        if not _is_enums_hierarchy_valid(new_cls):
+            for subset in classdict.get('__subsets__'):
+                subset.__supersets__.remove(new_cls)
+            
+            for superset in classdict.get('__supersets__'):
+                superset.__subsets__.remove(new_cls)
+            
+            raise RuntimeError(f"Definition of {new_cls.__name__} introduces cycle in a sets!")
+
+        for subset in classdict.get('__subsets__'):
+            _copy_members_from_subset_to_superset(subset, new_cls)
+        
+        for superset in classdict.get('__supersets__'):
             _copy_members_from_subset_to_superset(new_cls, superset)
         
         return new_cls
