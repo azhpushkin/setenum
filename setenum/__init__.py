@@ -2,7 +2,6 @@ from enum import Enum, EnumMeta
 
 
 # classmethod trick is used to remove a need in SetEnum class (only metaclass is needed)
-@classmethod
 def _missing_(cls, value):
     # _missing_ is used for looking up the values during __call__
     # this is a small check that makes this lookup work across super/sub sets
@@ -47,7 +46,7 @@ class SetEnumMeta(EnumMeta):
         classdict.setdefault('__subsets__', [])
         classdict.setdefault('__supersets__', [])
 
-        classdict['_missing_'] = _missing_
+        classdict['_missing_'] = classmethod(_missing_)
         new_cls = super().__new__(metacls, cls, bases, classdict)
 
         for subset in classdict.get('__subsets__'):
