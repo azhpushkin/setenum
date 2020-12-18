@@ -56,20 +56,3 @@ class SetEnumMeta(EnumMeta):
 
 class SetEnum(Enum, metaclass=SetEnumMeta):
     pass
-
-    
-
-
-
-# def as_superset_of(subset_cls):
-#     def inner(superset_cls):
-#         _copy_members_from_subset_to_superset(subset_cls, superset_cls)
-#         return superset_cls
-#     return inner
-
-
-# def as_subset_of(superset_cls):
-#     def inner(subset_cls):
-#         _copy_members_from_subset_to_superset(subset_cls, superset_cls)
-#         return subset_cls
-#     return inner
