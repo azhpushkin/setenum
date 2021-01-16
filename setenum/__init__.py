@@ -86,8 +86,18 @@ class SetEnumMeta(EnumMeta):
         
         return False
 
+    def mro(cls, *args, **kwargs):
+        subsets = getattr(cls, '__subsets__', [])
+        if not subsets:
+            return super().mro()
+        
+        print('MRO() called for ', cls)
+        
+        return super().mro()
+
 
 class SetEnum(Enum, metaclass=SetEnumMeta):
     __subsets__: Iterable[Any] = []
     __supersets__: Iterable[Any] = []
     pass
+        

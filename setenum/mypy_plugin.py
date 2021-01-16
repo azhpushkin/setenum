@@ -7,6 +7,17 @@ import copy
 class CustomPlugin(Plugin):
     metadata = {}
 
+    def get_base_class_hook(self, fullname: str):
+        def analyze(asd):
+            print(123, asd.cls.name)q
+
+        if fullname == 'setenum.SetEnumMeta':
+            return analyze
+    
+    def get_metaclass_hook(self, fullname: str):
+        # print(333, fullname)
+        return None
+    
     def get_customize_class_mro_hook(self, fullname: str):
         def analyze(classdef_ctx):
             if not classdef_ctx.cls.base_type_exprs:
@@ -60,16 +71,19 @@ class CustomPlugin(Plugin):
                 res = classdef_ctx.api.lookup_qualified(superset_name.name, classdef_ctx).node
                 classdef_ctx.cls.info.mro.insert(1, res)
 
-                for assign in self.metadata[classdef_ctx.cls.fullname]:
-                    res.defn.defs.body.append(AssignmentStmt(
-                        lvalues=[NameExpr(name=assign.lvalues[0].name)],
-                        rvalue=assign.rvalue
-                    ))
-            #     print(222, res.defn, id(res.defn.defs))
+                # for assign in self.metadata[classdef_ctx.cls.fullname]:
+                #     res.defn.defs.body.append(AssignmentStmt(
+                #         lvalues=[NameExpr(name='DJANGO')],
+                #         rvalue=assign.rvalue
+                #     ))
+                
 
             
-            # print(111, fullname, classdef_ctx.cls.defs, id(classdef_ctx.cls.defs))      
-           
+            # MRO is modified BEFORE class initialization, but modifying this shit afterwards is useless
+            # we need to use something else, e.g. from this part:
+            # https://github.com/python/mypy/blob/8296a3123a1066184a6c5c4bc54da1ff14983c56/mypy/semanal.py#L1157
+            # TODO: try to use 
+            
                 
         # see explanation below
         return analyze
