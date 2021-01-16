@@ -1,4 +1,5 @@
 from enum import Enum, EnumMeta
+from typing import Any, Iterable, List
 
 
 # classmethod trick is used to remove a need in SetEnum class (only metaclass is needed)
@@ -87,4 +88,6 @@ class SetEnumMeta(EnumMeta):
 
 
 class SetEnum(Enum, metaclass=SetEnumMeta):
+    __subsets__: Iterable[Any] = []
+    __supersets__: Iterable[Any] = []
     pass
