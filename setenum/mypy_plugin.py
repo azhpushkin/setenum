@@ -1,22 +1,39 @@
-from mypy.nodes import AssignmentExpr, AssignmentStmt, Block, ClassDef, IntExpr, ListExpr, NameExpr, StrExpr, TupleExpr, TypeInfo, is_class_var
+from mypy.nodes import AssignmentExpr, AssignmentStmt, Block, ClassDef, IntExpr, ListExpr, NameExpr, StrExpr, SymbolTable, TupleExpr, TypeInfo, is_class_var
 from mypy.plugin import ClassDefContext, Plugin
 
 import copy
 
 
-def asd(ctx: ClassDefContext):
-    ctx.api.leave_class()
+class CustomTypeInfo(TypeInfo):
+    def get(self, name: str):
+        print("CUSTOM CALLED YAHOO!!", name)
+        for cls in self.mro:
+            n = cls.names.get(name)
+            if n:
+                return n
+        return None
 
+
+def asd(ctx: ClassDefContext):
+    defn = ctx.cls
+
+    print('OLD TABLE IN CLASS', ctx.api.current_symbol_table())
+    ctx.api.leave_class()
     # Unlink classdef from old_info
     old_info = ctx.cls.info
     old_info.defn = ClassDef(ctx.cls.name + '_OLD', defs=Block([]))
     old_info._fullname = old_info.defn.name
-    print('??', old_info)
+    print('OLD INFO', old_info)
+    print('OLD TABLE', ctx.api.current_symbol_table())
+    table = ctx.api.current_symbol_table()
+    table.pop(ctx.cls.name)
+    print('!!!', table.keys())
 
-    new_info = ctx.api.make_empty_type_info(ctx.cls)
     
-    defn = ctx.cls
-    print('??', new_info)
+    
+    
+    new_info = CustomTypeInfo(SymbolTable(), defn, ctx.api.cur_mod_id)
+    
     defn.info = new_info
     new_info.defn = defn
     new_info._fullname = new_info.name
@@ -26,21 +43,30 @@ def asd(ctx: ClassDefContext):
     base_types, _ = ctx.api.analyze_base_classes(defn.base_type_exprs)
 
     ctx.api.add_symbol(defn.name, defn.info, defn)
+    
+    print('NEW TABLE', ctx.api.current_symbol_table())
     defn.info.type_vars = [tvar.name for tvar in defn.type_vars]
     
     
-    table = ctx.api.current_symbol_table()
-    print('!!!', table, table.get(defn.name))
     
     with ctx.api.scope.class_scope(defn.info):
         ctx.api.configure_base_classes(defn, base_types)
         ctx.api.analyze_metaclass(defn)
         
         ctx.api.enter_class(defn.info)
+
+        # Reset defs body to make sure accept() will process them again
+        for item in defn.defs.body:
+            item.lvalues[0].node = None
+            
         defn.defs.accept(ctx.api)
         ctx.api.leave_class()
     
-    ctx.api.enter_class(defn.info)
+    print('NEW TABLE AFTER WITH', ctx.api.current_symbol_table())
+    print('!!! TYPE', new_info)
+    ctx.api.enter_class(new_info)
+    print('NEW TABLE IN CLASS', ctx.api.current_symbol_table())
+    print(ctx.cls.defs.body)
 
 
     
