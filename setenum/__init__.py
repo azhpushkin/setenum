@@ -44,16 +44,19 @@ def _copy_members_from_subset_to_superset(subset_cls, superset_cls):
 class SetEnumMeta(EnumMeta):
 
     def __new__(metacls, cls, bases, classdict):
-        classdict.setdefault('__subsets__', [])
-        classdict.setdefault('__supersets__', [])
+        # Make sure this dunder-attributes are mutable (list)
+        classdict['__subsets__'] = list(classdict.get('__subsets__', []))
+        classdict['__supersets__'] = list(classdict.get('__supersets__', []))
 
         classdict['_missing_'] = classmethod(_missing_)
         new_cls = super().__new__(metacls, cls, bases, classdict)
 
-        for subset in classdict.get('__subsets__'):
+        
+
+        for subset in classdict['__subsets__']:
             subset.__supersets__.append(new_cls)
         
-        for superset in classdict.get('__supersets__'):
+        for superset in classdict['__supersets__']:
             superset.__subsets__.append(new_cls)
 
         if not _is_enums_hierarchy_valid(new_cls):
@@ -86,17 +89,9 @@ class SetEnumMeta(EnumMeta):
         
         return False
 
-    def mro(cls, *args, **kwargs):
-        subsets = getattr(cls, '__subsets__', [])
-        if not subsets:
-            return super().mro()
-        
-        print('MRO() called for ', cls)
-        
-        return super().mro()
-
 
 class SetEnum(Enum, metaclass=SetEnumMeta):
+    # Simply for autocomplete
     __subsets__: Iterable[Any] = []
     __supersets__: Iterable[Any] = []
     pass
