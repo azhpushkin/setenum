@@ -1,12 +1,22 @@
-from mypy.nodes import AssignmentExpr, AssignmentStmt, Block, ClassDef, IntExpr, ListExpr, NameExpr, StrExpr, SymbolTable, TupleExpr, TypeInfo, is_class_var
+from mypy.nodes import (
+    AssignmentStmt, Block, ClassDef, ListExpr,
+    NameExpr, SymbolTable, TypeInfo
+)
 from mypy.plugin import ClassDefContext, Plugin
 
-import copy
 
 
 class CustomTypeInfo(TypeInfo):
+    # TODO: store references to subsets and supersets
     def get(self, name: str):
-        print("CUSTOM CALLED YAHOO!!", name)
+        print('Access:', self.fullname)
+        
+        if name in ('__subsets__', '__supersets__'):
+            return self.names.get(name)
+
+        if name.startswith('__'):
+            return super().get(name)
+        
         for cls in self.mro:
             n = cls.names.get(name)
             if n:
@@ -17,19 +27,18 @@ class CustomTypeInfo(TypeInfo):
 def asd(ctx: ClassDefContext):
     defn = ctx.cls
 
-    print('OLD TABLE IN CLASS', ctx.api.current_symbol_table())
+    # print('OLD TABLE IN CLASS', ctx.api.current_symbol_table())
     ctx.api.leave_class()
     # Unlink classdef from old_info
     old_info = ctx.cls.info
     old_info.defn = ClassDef(ctx.cls.name + '_OLD', defs=Block([]))
     old_info._fullname = old_info.defn.name
-    print('OLD INFO', old_info)
-    print('OLD TABLE', ctx.api.current_symbol_table())
+    # print('OLD INFO', old_info)
+    # print('OLD TABLE', ctx.api.current_symbol_table())
+    
+    # Remove prev class GDEF, otherwise mypy considers new_info as redefinition
     table = ctx.api.current_symbol_table()
     table.pop(ctx.cls.name)
-    print('!!!', table.keys())
-
-    
     
     
     new_info = CustomTypeInfo(SymbolTable(), defn, ctx.api.cur_mod_id)
@@ -44,9 +53,8 @@ def asd(ctx: ClassDefContext):
 
     ctx.api.add_symbol(defn.name, defn.info, defn)
     
-    print('NEW TABLE', ctx.api.current_symbol_table())
+    # print('NEW TABLE', ctx.api.current_symbol_table())
     defn.info.type_vars = [tvar.name for tvar in defn.type_vars]
-    
     
     
     with ctx.api.scope.class_scope(defn.info):
@@ -62,52 +70,25 @@ def asd(ctx: ClassDefContext):
         defn.defs.accept(ctx.api)
         ctx.api.leave_class()
     
-    print('NEW TABLE AFTER WITH', ctx.api.current_symbol_table())
-    print('!!! TYPE', new_info)
+    # print('NEW TABLE AFTER WITH', ctx.api.current_symbol_table())
+    # print('!!! TYPE', new_info)
     ctx.api.enter_class(new_info)
-    print('NEW TABLE IN CLASS', ctx.api.current_symbol_table())
-    print(ctx.cls.defs.body)
+    # print('NEW TABLE IN CLASS', ctx.api.current_symbol_table())
+    # print(ctx.cls.defs.body)
 
 
     
 
 class CustomPlugin(Plugin):
+    metadata = {}
+
     def get_base_class_hook(self, fullname: str):
+        # TODO: _OLD class is still inside of the mro in setenum, check this
         if fullname == 'setenum.SetEnum':
             return asd
-
-
-class X:
-
-    # def get_base_class_hook(self, fullname: str):
-    #     def analyze(asd):
-    #         print(123, asd.cls.info)
-
-    #     if fullname == 'setenum.SetEnum':
-    #         return analyze
-    
-    # def get_attribute_hook(self, fullname: str):
-    #     print('<<<<', fullname)
-    #     return None
-
-    # def get_type_analyze_hook(self, fullname):    
-        
-    #     def asd(ctx):
-    #         print('>>>>', ctx.type, type(ctx.type))
-            
-    #         t = ctx.type
-    #         sym = ctx.api.lookup_qualified(t.name, t)
-
-    #         return ctx.api.analyze_type_with_type_info(sym.node, t.args, t)
-
-    #     if fullname.startswith('setenum'):
-    #         return asd
-
     
     def get_customize_class_mro_hook(self, fullname: str):
         def analyze(classdef_ctx):
-            if fullname == "example_test.X":
-                return
             if not classdef_ctx.cls.base_type_exprs:
                 return
 
@@ -121,6 +102,7 @@ class X:
                 and base_cls_expr.node.defn.fullname == 'setenum.SetEnum'
             ):
                 return
+            
             
             self.metadata[classdef_ctx.cls.fullname] = []
 
@@ -144,42 +126,17 @@ class X:
                 else:
                     self.metadata[classdef_ctx.cls.fullname].append(assign_stmt)
 
+            
             for subset_name in subsets.items:
                 res: TypeInfo = classdef_ctx.api.lookup_qualified(subset_name.name, classdef_ctx).node
                 res.mro.insert(1, classdef_ctx.cls.info)
 
-                # TODO: why copy is not working?
-                for assign in self.metadata[res.defn.fullname]:
-                    classdef_ctx.cls.defs.body.append(AssignmentStmt(
-                        lvalues=[NameExpr(name=assign.lvalues[0].name)],
-                        rvalue=assign.rvalue
-                    ))
 
-            # for superset_name in supersets.items:
-            #     res = classdef_ctx.api.lookup_qualified(superset_name.name, classdef_ctx).node
-            #     classdef_ctx.cls.info.mro.insert(1, res)
-
-                # for assign in self.metadata[classdef_ctx.cls.fullname]:
-                #     res.defn.defs.body.append(AssignmentStmt(
-                #         lvalues=[NameExpr(name='DJANGO')],
-                #         rvalue=assign.rvalue
-                #     ))
-
-                # print('!!11', classdef_ctx.cls.info)
-                # print('!!22', res.names.values(), type(res.names))
+            for superset_name in supersets.items:
+                res = classdef_ctx.api.lookup_qualified(superset_name.name, classdef_ctx).node
+                classdef_ctx.cls.info.mro.insert(1, res)
                 
-
-            
-            # MRO is modified BEFORE class initialization, but modifying this shit afterwards is useless
-            # we need to use something else, e.g. from this part:
-            # https://github.com/python/mypy/blob/8296a3123a1066184a6c5c4bc54da1ff14983c56/mypy/semanal.py#L1157
-            # TODO: try to use 
-            
-            print(111, fullname, classdef_ctx.cls.info.mro)
-            print('############')
-           
-                
-        # see explanation below
+        # TODO: return analyze only for setenum ancestors or IDK
         return analyze
 
 def plugin(version: str):
