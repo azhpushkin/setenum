@@ -1,25 +1,87 @@
-from mypy.nodes import AssignmentExpr, AssignmentStmt, IntExpr, ListExpr, NameExpr, StrExpr, TupleExpr, TypeInfo, is_class_var
-from mypy.plugin import Plugin
+from mypy.nodes import AssignmentExpr, AssignmentStmt, Block, ClassDef, IntExpr, ListExpr, NameExpr, StrExpr, TupleExpr, TypeInfo, is_class_var
+from mypy.plugin import ClassDefContext, Plugin
 
 import copy
 
 
-class CustomPlugin(Plugin):
-    metadata = {}
+def asd(ctx: ClassDefContext):
+    ctx.api.leave_class()
 
-    def get_base_class_hook(self, fullname: str):
-        def analyze(asd):
-            print(123, asd.cls.name)q
+    # Unlink classdef from old_info
+    old_info = ctx.cls.info
+    old_info.defn = ClassDef(ctx.cls.name + '_OLD', defs=Block([]))
+    old_info._fullname = old_info.defn.name
+    print('??', old_info)
 
-        if fullname == 'setenum.SetEnumMeta':
-            return analyze
+    new_info = ctx.api.make_empty_type_info(ctx.cls)
     
-    def get_metaclass_hook(self, fullname: str):
-        # print(333, fullname)
-        return None
+    defn = ctx.cls
+    print('??', new_info)
+    defn.info = new_info
+    new_info.defn = defn
+    new_info._fullname = new_info.name
+
+    
+
+    base_types, _ = ctx.api.analyze_base_classes(defn.base_type_exprs)
+
+    ctx.api.add_symbol(defn.name, defn.info, defn)
+    defn.info.type_vars = [tvar.name for tvar in defn.type_vars]
+    
+    
+    table = ctx.api.current_symbol_table()
+    print('!!!', table, table.get(defn.name))
+    
+    with ctx.api.scope.class_scope(defn.info):
+        ctx.api.configure_base_classes(defn, base_types)
+        ctx.api.analyze_metaclass(defn)
+        
+        ctx.api.enter_class(defn.info)
+        defn.defs.accept(ctx.api)
+        ctx.api.leave_class()
+    
+    ctx.api.enter_class(defn.info)
+
+
+    
+
+class CustomPlugin(Plugin):
+    def get_base_class_hook(self, fullname: str):
+        if fullname == 'setenum.SetEnum':
+            return asd
+
+
+class X:
+
+    # def get_base_class_hook(self, fullname: str):
+    #     def analyze(asd):
+    #         print(123, asd.cls.info)
+
+    #     if fullname == 'setenum.SetEnum':
+    #         return analyze
+    
+    # def get_attribute_hook(self, fullname: str):
+    #     print('<<<<', fullname)
+    #     return None
+
+    # def get_type_analyze_hook(self, fullname):    
+        
+    #     def asd(ctx):
+    #         print('>>>>', ctx.type, type(ctx.type))
+            
+    #         t = ctx.type
+    #         sym = ctx.api.lookup_qualified(t.name, t)
+
+    #         return ctx.api.analyze_type_with_type_info(sym.node, t.args, t)
+
+    #     if fullname.startswith('setenum'):
+    #         return asd
+
     
     def get_customize_class_mro_hook(self, fullname: str):
         def analyze(classdef_ctx):
+            if fullname == "example_test.X":
+                return
             if not classdef_ctx.cls.base_type_exprs:
                 return
 
@@ -67,15 +129,18 @@ class CustomPlugin(Plugin):
                         rvalue=assign.rvalue
                     ))
 
-            for superset_name in supersets.items:
-                res = classdef_ctx.api.lookup_qualified(superset_name.name, classdef_ctx).node
-                classdef_ctx.cls.info.mro.insert(1, res)
+            # for superset_name in supersets.items:
+            #     res = classdef_ctx.api.lookup_qualified(superset_name.name, classdef_ctx).node
+            #     classdef_ctx.cls.info.mro.insert(1, res)
 
                 # for assign in self.metadata[classdef_ctx.cls.fullname]:
                 #     res.defn.defs.body.append(AssignmentStmt(
                 #         lvalues=[NameExpr(name='DJANGO')],
                 #         rvalue=assign.rvalue
                 #     ))
+
+                # print('!!11', classdef_ctx.cls.info)
+                # print('!!22', res.names.values(), type(res.names))
                 
 
             
@@ -84,6 +149,9 @@ class CustomPlugin(Plugin):
             # https://github.com/python/mypy/blob/8296a3123a1066184a6c5c4bc54da1ff14983c56/mypy/semanal.py#L1157
             # TODO: try to use 
             
+            print(111, fullname, classdef_ctx.cls.info.mro)
+            print('############')
+           
                 
         # see explanation below
         return analyze
