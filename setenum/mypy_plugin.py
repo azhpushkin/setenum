@@ -6,86 +6,23 @@ from mypy.plugin import ClassDefContext, Plugin
 
 
 
-class CustomTypeInfo(TypeInfo):
-    # TODO: store references to subsets and supersets
-    def get(self, name: str):
-        print('Access:', self.fullname)
-        
-        if name in ('__subsets__', '__supersets__'):
-            return self.names.get(name)
+def custom_get(self, name):
+    print('Access:', self.fullname)
+    if name in ('__subsets__', '__supersets__'):
+        return self.names.get(name)
 
-        if name.startswith('__'):
-            return super().get(name)
-        
-        for cls in self.mro:
-            n = cls.names.get(name)
-            if n:
-                return n
-        return None
-
-
-def asd(ctx: ClassDefContext):
-    defn = ctx.cls
-
-    # print('OLD TABLE IN CLASS', ctx.api.current_symbol_table())
-    ctx.api.leave_class()
-    # Unlink classdef from old_info
-    old_info = ctx.cls.info
-    old_info.defn = ClassDef(ctx.cls.name + '_OLD', defs=Block([]))
-    old_info._fullname = old_info.defn.name
-    # print('OLD INFO', old_info)
-    # print('OLD TABLE', ctx.api.current_symbol_table())
+    if name.startswith('__'):
+        return TypeInfo.get(self, name)
     
-    # Remove prev class GDEF, otherwise mypy considers new_info as redefinition
-    table = ctx.api.current_symbol_table()
-    table.pop(ctx.cls.name)
-    
-    
-    new_info = CustomTypeInfo(SymbolTable(), defn, ctx.api.cur_mod_id)
-    
-    defn.info = new_info
-    new_info.defn = defn
-    new_info._fullname = new_info.name
-
-    
-
-    base_types, _ = ctx.api.analyze_base_classes(defn.base_type_exprs)
-
-    ctx.api.add_symbol(defn.name, defn.info, defn)
-    
-    # print('NEW TABLE', ctx.api.current_symbol_table())
-    defn.info.type_vars = [tvar.name for tvar in defn.type_vars]
-    
-    
-    with ctx.api.scope.class_scope(defn.info):
-        ctx.api.configure_base_classes(defn, base_types)
-        ctx.api.analyze_metaclass(defn)
-        
-        ctx.api.enter_class(defn.info)
-
-        # Reset defs body to make sure accept() will process them again
-        for item in defn.defs.body:
-            item.lvalues[0].node = None
-            
-        defn.defs.accept(ctx.api)
-        ctx.api.leave_class()
-    
-    # print('NEW TABLE AFTER WITH', ctx.api.current_symbol_table())
-    # print('!!! TYPE', new_info)
-    ctx.api.enter_class(new_info)
-    # print('NEW TABLE IN CLASS', ctx.api.current_symbol_table())
-    # print(ctx.cls.defs.body)
-
-
+    for cls in self.mro:
+        n = cls.names.get(name)
+        if n:
+            return n
+    return None
     
 
 class CustomPlugin(Plugin):
     metadata = {}
-
-    def get_base_class_hook(self, fullname: str):
-        # TODO: _OLD class is still inside of the mro in setenum, check this
-        if fullname == 'setenum.SetEnum':
-            return asd
     
     def get_customize_class_mro_hook(self, fullname: str):
         def analyze(classdef_ctx):
@@ -105,6 +42,7 @@ class CustomPlugin(Plugin):
             
             
             self.metadata[classdef_ctx.cls.fullname] = []
+            classdef_ctx.cls.info.get = custom_get.__get__(classdef_ctx.cls.info)
 
             subsets, supersets = ListExpr(items=[]), ListExpr(items=[])
              

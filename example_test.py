@@ -7,5 +7,5 @@ class X(SetEnum):
     B = 1
 
 
-a = X.C
+a: int = X.C.value
 
