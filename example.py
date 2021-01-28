@@ -1,24 +1,29 @@
 from setenum import SetEnum
 
 
+class CustomSetEnum(SetEnum):
+    pass
+
+
+
 # Example file, that showcases some basic functionality
 # Also used to validate mypy plugin
 
-class JavascriptDependencies(SetEnum):
+class JavascriptDependencies(CustomSetEnum):
     REACT = 'react'
 
 
 
 # This creates Dependencies.REACT value
 # Here subset is defined before bigger superset
-class Dependencies(SetEnum):
+class Dependencies(CustomSetEnum):
     __subsets__ = [JavascriptDependencies, ]
     NGINX = 'nginx'
 
 
 # This creates Dependencies.FLASK and Dependencies.DJANGO
 # Here subset is defined after superset
-class PythonDependencies(SetEnum):
+class PythonDependencies(CustomSetEnum):
     __supersets__ = [Dependencies, ]
     DJANGO = 'django'
     FLASK = 'flask'

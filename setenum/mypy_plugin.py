@@ -1,8 +1,8 @@
 from typing import Optional
-from mypy.nodes import ClassDef, ListExpr, NameExpr, SymbolTableNode, TypeInfo
+from mypy.nodes import ClassDef, ListExpr, NameExpr, SymbolTableNode, TypeInfo, AssignmentStmt
 from mypy.plugin import ClassDefContext, Plugin
 from mypy.semanal import SemanticAnalyzer
-
+from functools import partial
 
 
 def lookup_in_subsets(typeinfo: TypeInfo, name: str):
@@ -27,21 +27,9 @@ def custom_get(self: TypeInfo, name: str):
         return lookup_in_subsets(self, name)
 
 
-def customize_setenum_typeinfo(classdef_ctx: ClassDefContext):
-    if not classdef_ctx.cls.base_type_exprs:
-        return
+def customize_setenum_typeinfo(classdef_ctx: ClassDefContext, plugin_instance: 'CustomPlugin'):
+    plugin_instance.registered_descendants.append(classdef_ctx.cls.fullname)
 
-    base_cls_expr = classdef_ctx.cls.base_type_exprs[0]
-    if not isinstance(base_cls_expr, NameExpr):
-        return
-    
-    if not (
-        base_cls_expr.node
-        and isinstance(base_cls_expr.node, TypeInfo)
-        and base_cls_expr.node.defn.fullname == 'setenum.SetEnum'
-    ):
-        return
-    
     current_cls: ClassDef = classdef_ctx.cls
     current_info: TypeInfo = classdef_ctx.cls.info
     api: SemanticAnalyzer = classdef_ctx.api
@@ -53,6 +41,9 @@ def customize_setenum_typeinfo(classdef_ctx: ClassDefContext):
     subsets, supersets = ListExpr(items=[]), ListExpr(items=[])
         
     for assign_stmt in current_cls.defs.body:
+        if not isinstance(assign_stmt, AssignmentStmt):
+            continue
+
         # Multiple assignments are not allowed
         if len(assign_stmt.lvalues) != 1:
             api.fail('Avoid using multiple assignment with SetEnum', assign_stmt)
@@ -91,9 +82,11 @@ def customize_setenum_typeinfo(classdef_ctx: ClassDefContext):
     
 
 class CustomPlugin(Plugin):
+    registered_descendants = []
+
     def get_base_class_hook(self, fullname: str):
-        if fullname == 'setenum.SetEnum':
-            return customize_setenum_typeinfo
+        if fullname == 'setenum.SetEnum' or fullname in self.registered_descendants:
+            return partial(customize_setenum_typeinfo, plugin_instance=self)
 
 
 def plugin(version: str):

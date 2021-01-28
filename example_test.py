@@ -1,11 +1,24 @@
-from setenum import SetEnum
+from enum import Enum
 
 
-class X(SetEnum):
-    C: int = 3
-    A = 'a'
-    B = 1
+class Manufacturer(Enum):
+    APPLE = 'apple'
+    DELL = 'dell'
+    ...
 
 
-a: int = X.C.value
+class AppleModels(Enum):
+    MACBOOK_AIR = 'macbook_air'
+    MACBOOK_PRO = 'macbook_pro'
 
+
+class DellModels(Enum):
+    XPS = 'xps'
+    LATITUDE = 'latitude'
+
+
+Models = 
+
+@dataclass
+class Laptop:
+    manufacturer
